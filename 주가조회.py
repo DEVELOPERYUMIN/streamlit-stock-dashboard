@@ -1,15 +1,10 @@
 # ============================================================
-# Streamlit 주가 조회 앱 (Plotly + Hover 템플릿 + MDD 카드 + MDD 구간 강조)
-#
-# ✅ MDD 구간 강조:
-#  - 최대낙폭이 발생한 "고점 → 저점" 구간을 붉은 음영으로 표시
-#  - 고점/저점 마커 + 라벨 표시
+# Streamlit 주가 조회 앱 
 # ============================================================
 
 import datetime
 from io import BytesIO
 import re
-
 import streamlit as st
 import pandas as pd
 import FinanceDataReader as fdr
@@ -19,7 +14,7 @@ st.set_page_config(page_title="주가 조회 앱", layout="wide")
 
 
 # -------------------------
-# 0단계: 종목코드 정규화/검증 (Yahoo 경로 차단)
+# 0단계: 종목코드 정규화/검증 (Yahoo 경로 차단하기 위하여 숫자 6글자만 허용)
 # -------------------------
 def normalize_and_validate_krx_code(code) -> str:
     s = str(code).strip()
@@ -36,14 +31,14 @@ def normalize_and_validate_krx_code(code) -> str:
 # -------------------------
 # KRX 상장사 목록 로딩 (회사명 ↔ 종목코드)
 # -------------------------
-@st.cache_data(show_spinner=False, ttl=60 * 60)
+@st.cache_data(show_spinner=False, ttl=60 * 60)  # krx 목록은 웹에서 가져올 때 검색할 때마다 새로 받음 -> 느림 -> 1시간동안 캐시해서 재사용 
 def get_krx_company_list() -> pd.DataFrame:
     url = "http://kind.krx.co.kr/corpgeneral/corpList.do?method=download&searchType=13"
-    df = pd.read_html(url, header=0, flavor="bs4", encoding="EUC-KR")[0]
+    df = pd.read_html(url, header=0, flavor="bs4", encoding="EUC-KR")[0]  # krx 자료가 euc-kr 인코딩임 
     df = df[["회사명", "종목코드"]].copy()
     df["종목코드"] = df["종목코드"].astype(str).str.strip()
     df = df[df["종목코드"].str.fullmatch(r"\d+", na=False)].copy()
-    df["종목코드"] = df["종목코드"].str.zfill(6)
+    df["종목코드"] = df["종목코드"].str.zfill(6)  # 숫자코드만 남겨서 목록 품질 높임 
     return df
 
 
@@ -55,8 +50,8 @@ def calc_mdd(close_series: pd.Series) -> float:
     MDD(Max Drawdown) = (최저점 / 직전 고점) - 1 의 최소값
     예: -0.23 => -23% 최대 낙폭
     """
-    running_max = close_series.cummax()
-    drawdown = close_series / running_max - 1.0
+    running_max = close_series.cummax()   # cummax(): 누적 최대값(지금까지 최고가)를 계속 기록
+    drawdown = close_series / running_max - 1.0 # 낙폭 계산 , 최고가 일 때 0, 그 이하로 내려가면 음수
     return float(drawdown.min())
 
 
@@ -79,7 +74,7 @@ def find_mdd_period(close: pd.Series):
 
 
 # -------------------------
-# 유틸: Figure에 MDD 구간 강조(음영/마커/라벨)
+# Figure에 MDD 구간 시각화 
 # -------------------------
 def add_mdd_highlight(
     fig: go.Figure,
@@ -136,12 +131,16 @@ except Exception as e:
     st.error(f"상장사 명단 로딩 실패: {e}")
     st.stop()
 
-left, right = st.columns([2, 1], vertical_alignment="top")
+
+# 왼쪽을 더 넓게(검색결과/선택 ui), 오른쪽을 좁게(옵션/기간 선택 ui)
+left, right = st.columns([2, 1], vertical_alignment="top") 
 
 with left:
     st.subheader("1) 회사 검색 & 선택")
     keyword = st.text_input("회사명을 검색하세요 (예: 삼성)", value="").strip()
 
+
+# 삼성 검색하면 삼성전자 등 여러개 뜰 수 있음 -> startswith 우선 정렬
     if keyword:
         contains_df = company_df[company_df["회사명"].str.contains(keyword, na=False)].copy()
         starts_df = contains_df[contains_df["회사명"].str.startswith(keyword)].copy()
@@ -196,7 +195,7 @@ if confirm_btn:
         with st.spinner("데이터를 수집하는 중..."):
             stock_code = normalize_and_validate_krx_code(stock_code)
 
-            # ✅ selected_dates가 1개(date)인지 2개(기간)인지 확실히 처리
+            #  selected_dates가 1개(date)인지 2개(기간)인지 확실히 처리
             if isinstance(selected_dates, (tuple, list)):
                 if len(selected_dates) != 2:
                     st.warning("기간 조회를 하려면 날짜를 2개(시작/종료) 선택해 주세요.")
@@ -206,12 +205,10 @@ if confirm_btn:
                 st.warning("기간 조회를 하려면 날짜를 2개(시작/종료) 선택해 주세요.")
                 st.stop()
 
-            # ✅ 시작일 > 종료일이면 즉시 경고 (무조건 뜸)
+            #  시작일 > 종료일이면 즉시 경고 : 메서드에서 정렬하지만 혹시 몰라 넣음 
             if start_dt > end_dt:
                 st.warning("시작일이 종료일보다 늦습니다. 날짜를 다시 선택해 주세요.")
                 st.stop()
-
-
 
             start_date = start_dt.strftime("%Y%m%d")
             end_date = end_dt.strftime("%Y%m%d")
@@ -247,7 +244,7 @@ if confirm_btn:
             st.stop()
 
         # ============================================================
-        # ✅ 요약 카드 (수익률 + MDD 포함)
+        # 요약 카드 (수익률 + MDD 포함)
         # ============================================================
         last_close = float(df["Close"].iloc[-1])
         first_close = float(df["Close"].iloc[0])
@@ -274,7 +271,7 @@ if confirm_btn:
         st.dataframe(price_df.tail(10), width="stretch")
 
         # ============================================================
-        # ✅ Hover 템플릿: 날짜/종가/MA/거래량 한 번에
+        # Hover 템플릿: 날짜/종가/MA/거래량 한 번에
         # ============================================================
         has_volume = "Volume" in df.columns
 
@@ -293,7 +290,7 @@ if confirm_btn:
 
         fig = go.Figure()
 
-        # ✅ 레이아웃 (rangeslider는 OFF로 고정)
+        # 레이아웃 (rangeslider는 OFF로 고정)
         fig.update_layout(
             xaxis=dict(
                 title="Date",
@@ -356,7 +353,7 @@ if confirm_btn:
         ))
 
         # ============================================================
-        # ✅ MDD 구간 강조 (애니메이션 제거)
+        # MDD 구간 강조 
         # ============================================================
         if show_mdd_zone:
             peak_i, trough_i, mdd_val2 = find_mdd_period(df["Close"])
@@ -377,7 +374,7 @@ if confirm_btn:
             )
 
         # ============================================================
-        # (선택) Close 타임-플레이 애니메이션
+        # Close 타임-플레이 애니메이션
         # ============================================================
         if use_animation:
             MAX_FRAMES = 260
