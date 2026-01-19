@@ -1,57 +1,4 @@
-'''
- ============================================================
- Streamlit 주가 조회 앱 
- 코드 전체 구조 설명 
- 
- 1️⃣ 데이터 준비 & 검증 단계
 
-KRX 상장사 목록을 웹에서 로딩하고 캐시한다.
-
-회사명 검색을 통해 종목을 선택한다.
-
-종목코드는 숫자 6자리로 정규화하여 KRX 종목만 허용한다.
-
-날짜 입력값(시작/종료)에 대해 유효성 검사를 수행한다.
-
-2️⃣ 주가 데이터 조회 & 지표 계산 단계
-
-FinanceDataReader로 선택한 종목의 일봉 데이터를 조회한다.
-
-날짜 인덱스를 date 컬럼으로 변환하여 시각화에 사용한다.
-
-이동평균선(MA20 / MA60)을 계산한다.
-
-기간 수익률, 전일 대비, 변동성, MDD(최대낙폭)를 계산한다.
-
-최근 1주 / 1개월 / 3개월 수익률을 추가로 계산한다.
-
-3️⃣ 요약 정보 UI 구성 단계
-
-현재가와 전일 대비(▲▼, %)를 최상단 카드로 표시한다.
-
-기간 수익률, 최고/최저가, MDD, 변동성을 카드 형태로 요약한다.
-
-최근 1주 / 1개월 / 3개월 흐름을 별도 요약 카드로 제공한다.
-
-사용자가 차트를 보기 전에 핵심 판단이 가능하도록 설계한다.
-
-4️⃣ 차트 시각화 & 결과 출력 단계
-
-Plotly를 사용해 종가 중심의 인터랙티브 차트를 생성한다.
-
-선택 옵션에 따라 이동평균선, 거래량(보조축)을 표시한다.
-
-최대낙폭(MDD) 발생 구간을 음영 및 마커로 강조한다.
-
-Hover를 통합하여 날짜별 정보를 한 번에 확인할 수 있게 한다.
-
-(선택) 종가 타임-플레이 애니메이션을 제공한다.
-
-데이터 테이블과 엑셀 다운로드 기능을 제공한다.
- 
- 
- ============================================================
-'''
 import datetime
 from io import BytesIO
 import re
@@ -59,8 +6,52 @@ import streamlit as st
 import pandas as pd
 import FinanceDataReader as fdr
 import plotly.graph_objects as go
+import feedparser
+import urllib.parse import quote
+frome datetime import datetime
 
 st.set_page_config(page_title="주가 조회 앱", layout="wide")
+
+
+@st.cache_data(show_spinner=False, ttl=10 * 60)  # 뉴스는 10분 캐시 추천
+def fetch_google_news_rss(query: str, hl: str = "ko", gl: str = "KR", ceid: str = "KR:ko", limit: int = 10):
+    """
+    Google News RSS에서 헤드라인 가져오기
+    - query: 검색어 (예: "삼성전자", "삼성전자 주가", "018260")
+    """
+    q = quote(query)
+    url = f"https://news.google.com/rss/search?q={q}&hl={hl}&gl={gl}&ceid={ceid}"
+
+    feed = feedparser.parse(url)
+    items = []
+    for e in feed.entries[:limit]:
+        # published_parsed가 없을 수도 있어서 안전 처리
+        published = ""
+        if getattr(e, "published_parsed", None):
+            published = datetime(*e.published_parsed[:6]).strftime("%Y-%m-%d %H:%M")
+
+        items.append({
+            "title": e.title,
+            "link": e.link,
+            "source": getattr(getattr(e, "source", None), "title", ""),
+            "published": published,
+        })
+    return items
+
+
+def build_news_queries(company_name: str, stock_code: str):
+    """
+    검색 품질을 위해 쿼리를 2~3개로 시도
+    """
+    queries = [
+        f"{company_name} 주가",
+        f"{company_name} 실적",
+        f"{company_name}",
+    ]
+    # 종목코드도 같이 넣고 싶으면(가끔 도움됨)
+    if stock_code and stock_code.isdigit():
+        queries.insert(1, f"{company_name} {stock_code}")
+    return queries
 
 
 # -------------------------
@@ -567,6 +558,34 @@ if confirm_btn:
             st.caption("※ Close 애니메이션은 성능을 위해 최근 약 1년(최대 260프레임)만 재생합니다.")
 
         st.plotly_chart(fig, use_container_width=True)
+        
+        
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+        # ============================================================
+        # 주요 뉴스 헤드라인
+        # ============================================================
+        st.subheader("📰 주요 뉴스 헤드라인")
+
+        queries = build_news_queries(company_name, stock_code)
+
+        news_items = []
+        for q in queries:
+            news_items = fetch_google_news_rss(q, limit=10)
+            if len(news_items) >= 5:  # 어느 정도 나오면 그 쿼리로 확정
+                break
+
+        if not news_items:
+            st.info("관련 뉴스가 충분히 검색되지 않았어요. (검색어/종목명 변경 시 개선될 수 있음)")
+        else:
+            with st.expander(f"뉴스 보기 (검색어: {q})", expanded=True):
+                for it in news_items:
+                    meta = " · ".join([x for x in [it["source"], it["published"]] if x])
+                    st.markdown(f"- [{it['title']}]({it['link']})")
+                    if meta:
+                        st.caption(meta)
+
 
         # ============================================================
         # 엑셀 다운로드
