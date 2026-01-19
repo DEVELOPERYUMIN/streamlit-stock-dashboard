@@ -58,19 +58,23 @@ def calc_mdd(close_series: pd.Series) -> float:
 # -------------------------
 # 유틸: MDD 발생 구간(고점→저점) 찾기
 # -------------------------
-def find_mdd_period(close: pd.Series):
+def find_mdd_period_iloc(close: pd.Series):
     """
-    최대낙폭(MDD)이 발생한 '고점 인덱스'와 '저점 인덱스'를 찾아 반환
-    반환: (peak_idx, trough_idx, mdd_value)
+    최대낙폭(MDD)이 발생한 '고점 위치(정수)'와 '저점 위치(정수)'를 반환
+    반환: (peak_pos, trough_pos, mdd_value)
+    - close는 index가 뭐든 상관없이 내부에서 0..N-1 기준으로 처리
     """
-    running_max = close.cummax()
-    drawdown = close / running_max - 1.0
+    s = close.reset_index(drop=True).astype(float)   # 무조건 0..N-1 새 인덱스부여
 
-    mdd_value = float(drawdown.min())
-    trough_idx = drawdown.idxmin()       # 가장 크게 빠진 저점 위치
-    peak_idx = close.loc[:trough_idx].idxmax()  # 그 저점 이전 구간에서의 고점 위치
+    running_max = s.cummax()
+    drawdown = s / running_max - 1.0
 
-    return peak_idx, trough_idx, mdd_value
+    trough_pos = int(drawdown.idxmin())          # 저점의 '정수 위치'
+    peak_pos = int(s.iloc[:trough_pos + 1].idxmax())  # 저점 이전 구간의 고점 '정수 위치'
+    mdd_value = float(drawdown.iloc[trough_pos])
+
+    return peak_pos, trough_pos, mdd_value
+
 
 
 # -------------------------
@@ -220,7 +224,7 @@ if confirm_btn:
             st.stop()
 
         # Plotly x축용 date 컬럼 확보
-        df = price_df.copy().reset_index()
+        df = price_df.copy().reset_index()  # FDR 이 반환하는 index가 날짜임 -> date 컬럼으로 처리 
         if "Date" in df.columns:
             df.rename(columns={"Date": "date"}, inplace=True)
         elif "date" not in df.columns:
@@ -231,11 +235,11 @@ if confirm_btn:
         df["MA60"] = df["Close"].rolling(60).mean()
 
         # [가드] MA가 전부 NaN이면 자동 OFF + 안내
-        if show_ma20 and df["MA20"].notna().sum() == 0:
-            st.info("선택 기간이 너무 짧아 MA20을 계산할 수 없어 MA20 표시를 껐어요.")
+        if show_ma20 and df["MA20"].notna().sum() == 0:      # 기간이 10일이면 NAN
+            st.info("선택 기간이 20일보다 짧아 MA20을 계산할 수 없어 MA20 표시를 껐어요.")
             show_ma20 = False
         if show_ma60 and df["MA60"].notna().sum() == 0:
-            st.info("선택 기간이 너무 짧아 MA60을 계산할 수 없어 MA60 표시를 껐어요.")
+            st.info("선택 기간이 60일보다 짧아 MA60을 계산할 수 없어 MA60 표시를 껐어요.")
             show_ma60 = False
 
         # [가드] 라인 최소 1개
@@ -256,8 +260,8 @@ if confirm_btn:
         mdd = calc_mdd(df["Close"])
         mdd_pct = mdd * 100
 
-        daily_ret = df["Close"].pct_change()
-        vol = float(daily_ret.std() * 100) if daily_ret.notna().sum() >= 2 else float("nan")
+        daily_ret = df["Close"].pct_change()  # 일간수익률 만들고 
+        vol = float(daily_ret.std() * 100) if daily_ret.notna().sum() >= 2 else float("nan")  # 표준편차를 % 로 표시 
 
         c1, c2, c3, c4, c5, c6 = st.columns(6)
         c1.metric("최근 종가", f"{last_close:,.0f}")
@@ -276,8 +280,6 @@ if confirm_btn:
         has_volume = "Volume" in df.columns
 
         customdata = pd.DataFrame({
-            "MA20": df["MA20"],
-            "MA60": df["MA60"],
             "Volume": (df["Volume"] if has_volume else [None] * len(df))
         }).to_numpy()
 
@@ -306,12 +308,12 @@ if confirm_btn:
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
             margin=dict(l=30, r=30, t=60, b=30),
             height=560,
-            hovermode="x unified",
+            hovermode="x unified",   # x축 기준으로 hover 정보 통합 표시(마우스를 한 날짜에 올리면 됨)
             title=f"{company_name} 추이",
         )
 
 
-        # Close trace
+        # 종가 
         fig.add_trace(go.Scatter(
             x=df["date"],
             y=df["Close"],
@@ -322,7 +324,7 @@ if confirm_btn:
             hovertemplate=close_hover,
         ))
 
-        # MA traces
+        # MA 20 : 20일간의 이동평균선
         fig.add_trace(go.Scatter(
             x=df["date"],
             y=df["MA20"],
@@ -331,7 +333,8 @@ if confirm_btn:
             visible=show_ma20,
             hoverinfo="skip",
         ))
-
+        
+        # MA 60 : 60일간의 이동평균선
         fig.add_trace(go.Scatter(
             x=df["date"],
             y=df["MA60"],
@@ -341,14 +344,14 @@ if confirm_btn:
             hoverinfo="skip",
         ))
 
-        # Volume trace (보조축)
+        # 거래량 (보조축)
         fig.add_trace(go.Bar(
             x=df["date"],
             y=(df["Volume"] if has_volume else [0] * len(df)),
             name="Volume",
             opacity=0.25,
             visible=(show_vol and has_volume),
-            yaxis="y2",
+            yaxis="y2",   # 볼륨바는 보조축 
             hoverinfo="skip",
         ))
 
@@ -356,13 +359,13 @@ if confirm_btn:
         # MDD 구간 강조 
         # ============================================================
         if show_mdd_zone:
-            peak_i, trough_i, mdd_val2 = find_mdd_period(df["Close"])
+            peak_pos, trough_pos, mdd_val2 = find_mdd_period_iloc(df["Close"])
             mdd_pct2 = mdd_val2 * 100
 
-            peak_date = df.loc[peak_i, "date"]
-            trough_date = df.loc[trough_i, "date"]
-            peak_price = float(df.loc[peak_i, "Close"])
-            trough_price = float(df.loc[trough_i, "Close"])
+            peak_date = df.iloc[peak_pos]["date"]
+            trough_date = df.iloc[trough_pos]["date"]
+            peak_price = float(df.iloc[peak_pos]["Close"])
+            trough_price = float(df.iloc[trough_pos]["Close"])
 
             add_mdd_highlight(
                 fig=fig,
@@ -373,11 +376,12 @@ if confirm_btn:
                 mdd_pct=mdd_pct2,
             )
 
+
         # ============================================================
         # Close 타임-플레이 애니메이션
         # ============================================================
         if use_animation:
-            MAX_FRAMES = 260
+            MAX_FRAMES = 260  # 프레임 너무 많으면 느려짐 -> 최근 1년치 정도로 제한
             df_anim = df.tail(MAX_FRAMES).copy()
 
             custom_anim = pd.DataFrame({
