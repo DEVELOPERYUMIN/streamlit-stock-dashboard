@@ -360,6 +360,13 @@ if confirm_btn:
         ret_1m = period_return(df["Close"], 20)   # 1개월
         ret_3m = period_return(df["Close"], 60)   # 3개월
 
+        def delta_str(x):
+            if x is None:
+                return None
+            sign = "▲" if x > 0 else "▼"
+            return f"{sign} {abs(x):.2f}%"
+
+
         st.markdown("### 최근 흐름 요약")
 
         c1, c2, c3 = st.columns(3)
@@ -367,17 +374,20 @@ if confirm_btn:
         c1.metric(
             "1주일",
             "-" if ret_1w is None else f"{ret_1w:.2f}%",
+            delta=None if ret_1w is None else delta_str(ret_1w)
         )
 
         c2.metric(
             "1개월",
             "-" if ret_1m is None else f"{ret_1m:.2f}%",
+            delta=None if ret_1m is None else delta_str(ret_1m)
         )
 
         c3.metric(
             "3개월",
             "-" if ret_3m is None else f"{ret_3m:.2f}%",
-        )
+            delta=None if ret_3m is None else delta_str(ret_3m)
+)
 
 
         # ============================================================
