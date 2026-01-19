@@ -557,11 +557,12 @@ if confirm_btn:
             )
             st.caption("※ Close 애니메이션은 성능을 위해 최근 약 1년(최대 260프레임)만 재생합니다.")
 
-        st.plotly_chart(fig, use_container_width=True)
-        
-        
-        
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            key="main_price_chart"
+        )
+
 
         # ============================================================
         # 주요 뉴스 헤드라인
