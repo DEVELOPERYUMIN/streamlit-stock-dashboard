@@ -223,7 +223,6 @@ with right:
     use_animation = st.checkbox("Close 타임-플레이 애니메이션(가벼운 버전)", value=False)
    
     today = date.today()
-    now=dt.now()
     jan_1 = date(today.year, 1, 1)
     selected_dates = st.date_input(   #  date 기간 선택을 거꾸로 해도 st.date_input 이 자동으로 정렬함 
         "조회할 날짜를 입력하세요",
