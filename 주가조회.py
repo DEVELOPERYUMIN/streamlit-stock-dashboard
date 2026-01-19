@@ -345,6 +345,27 @@ if confirm_btn:
 
 
         st.subheader(f"[{company_name}] 주가 데이터 (코드: {stock_code})")
+        
+        # =========================
+        # 테이블 컬럼 한글화
+        # =========================
+        df_table = price_df.copy()
+
+        df_table = df_table.rename(columns={
+            "Open": "시가",
+            "High": "고가",
+            "Low": "저가",
+            "Close": "종가",
+            "Volume": "거래량",
+            "Change": "등락률"
+        })
+
+        # Date index → 컬럼으로 보이게
+        df_table = df_table.reset_index().rename(columns={"Date": "날짜"})
+
+        st.dataframe(df_table.tail(10), width="stretch")
+
+
         st.dataframe(price_df.tail(10), width="stretch")
 
 
@@ -356,6 +377,12 @@ if confirm_btn:
                 return None
             return (close.iloc[-1] / close.iloc[-n-1] - 1) * 100
 
+        def format_return(val):
+            if val is None:
+                return "-"
+            arrow = "🔺" if val > 0 else "🔻" if val < 0 else ""
+            return f"{val:.2f}% {arrow}"
+        
         ret_1w = period_return(df["Close"], 5)    # 1주일
         ret_1m = period_return(df["Close"], 20)   # 1개월
         ret_3m = period_return(df["Close"], 60)   # 3개월
@@ -367,27 +394,21 @@ if confirm_btn:
             return f"{sign} {abs(x):.2f}%"
 
 
-        st.markdown("### 최근 흐름 요약")
+        st.subheader("최근 흐름 요약")
 
         c1, c2, c3 = st.columns(3)
 
-        c1.metric(
-            "1주일",
-            "-" if ret_1w is None else f"{ret_1w:.2f}%",
-            delta=None if ret_1w is None else delta_str(ret_1w)
-        )
+        with c1:
+            st.markdown("**1주일**")
+            st.markdown(f"<h2>{format_return(ret_1w)}</h2>", unsafe_allow_html=True)
 
-        c2.metric(
-            "1개월",
-            "-" if ret_1m is None else f"{ret_1m:.2f}%",
-            delta=None if ret_1m is None else delta_str(ret_1m)
-        )
+        with c2:
+            st.markdown("**1개월**")
+            st.markdown(f"<h2>{format_return(ret_1m)}</h2>", unsafe_allow_html=True)
 
-        c3.metric(
-            "3개월",
-            "-" if ret_3m is None else f"{ret_3m:.2f}%",
-            delta=None if ret_3m is None else delta_str(ret_3m)
-)
+        with c3:
+            st.markdown("**3개월**")
+            st.markdown(f"<h2>{format_return(ret_3m)}</h2>", unsafe_allow_html=True)
 
 
         # ============================================================
