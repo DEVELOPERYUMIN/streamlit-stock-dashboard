@@ -574,7 +574,7 @@ if confirm_btn:
         news_items = []
         used_query = ""
         for q in queries:
-            tmp = fetch_google_news_rss(q, limit=10)
+            tmp = fetch_google_news_rss(q, limit=7)
             if tmp:
                 news_items = tmp
                 used_query = q
