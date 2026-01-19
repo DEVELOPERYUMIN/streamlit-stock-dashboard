@@ -1,5 +1,4 @@
 
-import datetime
 from io import BytesIO
 import re
 import streamlit as st
@@ -9,7 +8,7 @@ import plotly.graph_objects as go
 import feedparser
 import urllib.parse 
 import quote
-from datetime import datetime
+from datetime import datetime,date
 
 st.set_page_config(page_title="주가 조회 앱", layout="wide")
 # ============================================================  
@@ -221,9 +220,9 @@ with right:
     st.markdown("**시각 효과(선택)**")
     use_animation = st.checkbox("Close 타임-플레이 애니메이션(가벼운 버전)", value=False)
    
-
-    today = datetime.date.today()
-    jan_1 = datetime.date(today.year, 1, 1)
+    today = date.today()
+    now=datetime.now()
+    jan_1 = date(today.year, 1, 1)
     selected_dates = st.date_input(   #  date 기간 선택을 거꾸로 해도 st.date_input 이 자동으로 정렬함 
         "조회할 날짜를 입력하세요",
         (jan_1, today),
