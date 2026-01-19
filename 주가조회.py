@@ -347,7 +347,7 @@ if confirm_btn:
         st.subheader(f"[{company_name}] 주가 데이터 (코드: {stock_code})")
         
         # =========================
-        # 테이블 컬럼 한글화
+        # 테이블 컬럼 한글화 + 인덱스 제거
         # =========================
         df_table = price_df.copy()
 
@@ -360,13 +360,16 @@ if confirm_btn:
             "Change": "등락률"
         })
 
-        # Date index → 컬럼으로 보이게
-        df_table = df_table.reset_index().rename(columns={"Date": "날짜"})
+        # Date index → 날짜 컬럼 / 기존 index 제거
+        df_table = df_table.reset_index(drop=False)
+        df_table = df_table.rename(columns={"Date": "날짜"})
 
-        st.dataframe(df_table.tail(10), width="stretch")
+        # 🔥 핵심: index 컬럼 완전 제거
+        df_table = df_table[[
+            "날짜", "시가", "고가", "저가", "종가", "거래량", "등락률"
+        ]]
 
-
-        st.dataframe(price_df.tail(10), width="stretch")
+        st.dataframe(df_table.tail(10), width="stretch", hide_index=True)
 
 
         # ============================================================
