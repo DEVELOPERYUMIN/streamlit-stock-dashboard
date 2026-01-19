@@ -185,7 +185,7 @@ except Exception as e:
 left, right = st.columns([2, 1], vertical_alignment="top") 
 
 with left:
-    st.subheader("1) 회사 검색 & 선택")
+    st.subheader("회사 검색")
     keyword = st.text_input("회사명을 검색하세요 (예: 삼성)", value="").strip()
 
 
