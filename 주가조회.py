@@ -391,7 +391,7 @@ if confirm_btn:
             return f"{sign} {abs(x):.2f}%"
 
 
-        st.subheader("최근 흐름 요약")
+        st.subheader("🧹 최근 흐름 요약")
 
         c1, c2, c3 = st.columns(3)
 
