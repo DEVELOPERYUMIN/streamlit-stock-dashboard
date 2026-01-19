@@ -15,30 +15,32 @@ import datetime as dt
 st.set_page_config(page_title="주가 조회 앱", layout="wide")
 # ============================================================  
 
-@st.cache_data(show_spinner=False, ttl=10 * 60)  # 뉴스는 10분 캐시 추천
-def fetch_google_news_rss(query: str, hl: str = "ko", gl: str = "KR", ceid: str = "KR:ko", limit: int = 10):
-    """
-    Google News RSS에서 헤드라인 가져오기
-    - query: 검색어 (예: "삼성전자", "삼성전자 주가", "018260")
-    """
+import feedparser
+from urllib.parse import quote
+
+@st.cache_data(show_spinner=False, ttl=10 * 60)
+def fetch_google_news_rss(query: str, limit: int = 10):
     q = quote(query)
-    url = f"https://news.google.com/rss/search?q={q}&hl={hl}&gl={gl}&ceid={ceid}"
+    url = f"https://news.google.com/rss/search?q={q}&hl=ko&gl=KR&ceid=KR:ko"
 
     feed = feedparser.parse(url)
     items = []
+
     for e in feed.entries[:limit]:
-        # published_parsed가 없을 수도 있어서 안전 처리
-        published = ""
-        if getattr(e, "published_parsed", None):
-            published = dt(*e.published_parsed[:6]).strftime("%Y-%m-%d %H:%M")
+        published = getattr(e, "published", "") 
+        source = ""
+        if getattr(e, "source", None) and getattr(e.source, "title", None):
+            source = e.source.title
 
         items.append({
             "title": e.title,
             "link": e.link,
-            "source": getattr(getattr(e, "source", None), "title", ""),
+            "source": source,
             "published": published,
         })
+
     return items
+
 
 
 def build_news_queries(company_name: str, stock_code: str):
@@ -565,23 +567,23 @@ if confirm_btn:
         )
 
 
-        # ============================================================
-        # 주요 뉴스 헤드라인
-        # ============================================================
         st.subheader("📰 주요 뉴스 헤드라인")
 
-        queries = build_news_queries(company_name, stock_code)
+        queries = [f"{company_name} 주가", f"{company_name} 실적", f"{company_name}"]
 
         news_items = []
+        used_query = ""
         for q in queries:
-            news_items = fetch_google_news_rss(q, limit=10)
-            if len(news_items) >= 5:  # 어느 정도 나오면 그 쿼리로 확정
+            tmp = fetch_google_news_rss(q, limit=10)
+            if tmp:
+                news_items = tmp
+                used_query = q
                 break
 
         if not news_items:
-            st.info("관련 뉴스가 충분히 검색되지 않았어요. (검색어/종목명 변경 시 개선될 수 있음)")
+            st.info("관련 뉴스가 충분히 검색되지 않았어요.")
         else:
-            with st.expander(f"뉴스 보기 (검색어: {q})", expanded=True):
+            with st.expander(f"뉴스 보기 (검색어: {used_query})", expanded=True):
                 for it in news_items:
                     meta = " · ".join([x for x in [it["source"], it["published"]] if x])
                     st.markdown(f"- [{it['title']}]({it['link']})")
