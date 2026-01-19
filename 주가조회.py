@@ -7,11 +7,12 @@ import pandas as pd
 import FinanceDataReader as fdr
 import plotly.graph_objects as go
 import feedparser
-import urllib.parse import quote
-frome datetime import datetime
+import urllib.parse 
+import quote
+from datetime import datetime
 
 st.set_page_config(page_title="주가 조회 앱", layout="wide")
-
+# ============================================================  
 
 @st.cache_data(show_spinner=False, ttl=10 * 60)  # 뉴스는 10분 캐시 추천
 def fetch_google_news_rss(query: str, hl: str = "ko", gl: str = "KR", ceid: str = "KR:ko", limit: int = 10):
