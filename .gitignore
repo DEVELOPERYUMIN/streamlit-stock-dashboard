@@ -7,3 +7,5 @@
 # ! not
 # txst 파일 제외할건데 requirements.txt 파일은 빼고 
 !requirements.txt
+
+.env

@@ -10,7 +10,13 @@ import pandas as pd
 import FinanceDataReader as fdr
 import matplotlib.pyplot as plt
 import koreanize_matplotlib
+import os # os 환경변수 불러올 때 사용
+from dotenv import load_dotenv
 
+
+load_dotenv()  # .env 파일에 정의된 환경변수들을 로드 -> 맨 앞줄에 작성 
+my_name=os.getenv("MY_NAME")
+st.header(my_name)
 
 ####  문자 들어와도 그대로 반환함 
 
