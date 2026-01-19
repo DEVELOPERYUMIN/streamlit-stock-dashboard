@@ -8,7 +8,9 @@ import plotly.graph_objects as go
 import feedparser
 import urllib.parse 
 import quote
-from datetime import datetime,date
+from datetime import date
+import datetime as dt
+
 
 st.set_page_config(page_title="주가 조회 앱", layout="wide")
 # ============================================================  
@@ -28,7 +30,7 @@ def fetch_google_news_rss(query: str, hl: str = "ko", gl: str = "KR", ceid: str 
         # published_parsed가 없을 수도 있어서 안전 처리
         published = ""
         if getattr(e, "published_parsed", None):
-            published = datetime(*e.published_parsed[:6]).strftime("%Y-%m-%d %H:%M")
+            published = dt(*e.published_parsed[:6]).strftime("%Y-%m-%d %H:%M")
 
         items.append({
             "title": e.title,
@@ -221,7 +223,7 @@ with right:
     use_animation = st.checkbox("Close 타임-플레이 애니메이션(가벼운 버전)", value=False)
    
     today = date.today()
-    now=datetime.now()
+    now=dt.now()
     jan_1 = date(today.year, 1, 1)
     selected_dates = st.date_input(   #  date 기간 선택을 거꾸로 해도 st.date_input 이 자동으로 정렬함 
         "조회할 날짜를 입력하세요",
