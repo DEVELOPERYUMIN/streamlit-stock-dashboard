@@ -254,6 +254,22 @@ if confirm_btn:
         first_close = float(df["Close"].iloc[0])
         return_pct = (last_close / first_close - 1) * 100
 
+        
+        # ----------------------------
+        # 전일 대비 계산
+        # ----------------------------
+        if len(df) >= 2:
+            prev_close = float(df["Close"].iloc[-2])
+            diff = last_close - prev_close
+            diff_pct = diff / prev_close * 100
+        else:
+            diff = 0.0
+            diff_pct = 0.0
+
+        is_up = diff > 0
+        sign = "▲" if is_up else "▼"   
+
+     
         max_close = float(df["Close"].max())
         min_close = float(df["Close"].min())
 
@@ -264,12 +280,19 @@ if confirm_btn:
         vol = float(daily_ret.std() * 100) if daily_ret.notna().sum() >= 2 else float("nan")  # 표준편차를 % 로 표시 
 
         c1, c2, c3, c4, c5, c6 = st.columns(6)
-        c1.metric("최근 종가", f"{last_close:,.0f}")
+
+        c1.metric(
+            "현재가",
+            f"{last_close:,.0f}",
+            f"{sign} {abs(diff):,.0f} ({abs(diff_pct):.2f}%)"
+        )
+
         c2.metric("기간 수익률", f"{return_pct:.2f}%")
         c3.metric("최고가(종가)", f"{max_close:,.0f}")
         c4.metric("최저가(종가)", f"{min_close:,.0f}")
         c5.metric("최대낙폭(MDD)", f"{mdd_pct:.2f}%")
         c6.metric("변동성(일간)", "-" if pd.isna(vol) else f"{vol:.2f}%")
+
 
         st.subheader(f"[{company_name}] 주가 데이터 (코드: {stock_code})")
         st.dataframe(price_df.tail(10), width="stretch")
