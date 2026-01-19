@@ -1,3 +1,58 @@
+'''
+ Streamlit 주가 조회 앱 
+ 코드 전체 구조 설명 
+ 
+ 1️⃣ 데이터 준비 & 검증 단계
+
+KRX 상장사 목록을 웹에서 로딩하고 캐시한다.
+
+회사명 검색을 통해 종목을 선택한다.
+
+종목코드는 숫자 6자리로 정규화하여 KRX 종목만 허용한다.
+
+날짜 입력값(시작/종료)에 대해 유효성 검사를 수행한다.
+
+2️⃣ 주가 데이터 조회 & 지표 계산 단계
+
+FinanceDataReader로 선택한 종목의 일봉 데이터를 조회한다.
+
+날짜 인덱스를 date 컬럼으로 변환하여 시각화에 사용한다.
+
+이동평균선(MA20 / MA60)을 계산한다.
+
+기간 수익률, 전일 대비, 변동성, MDD(최대낙폭)를 계산한다.
+
+최근 1주 / 1개월 / 3개월 수익률을 추가로 계산한다.
+
+3️⃣ 요약 정보 UI 구성 단계
+
+현재가와 전일 대비(▲▼, %)를 최상단 카드로 표시한다.
+
+기간 수익률, 최고/최저가, MDD, 변동성을 카드 형태로 요약한다.
+
+최근 1주 / 1개월 / 3개월 흐름을 별도 요약 카드로 제공한다.
+
+사용자가 차트를 보기 전에 핵심 판단이 가능하도록 설계한다.
+
+4️⃣ 차트 시각화 & 결과 출력 단계
+
+Plotly를 사용해 종가 중심의 인터랙티브 차트를 생성한다.
+
+선택 옵션에 따라 이동평균선, 거래량(보조축)을 표시한다.
+
+최대낙폭(MDD) 발생 구간을 음영 및 마커로 강조한다.
+
+Hover를 통합하여 날짜별 정보를 한 번에 확인할 수 있게 한다.
+
+(선택) 종가 타임-플레이 애니메이션을 제공한다.
+
+데이터 테이블과 엑셀 다운로드 기능을 제공한다.
+ 
+'''
+
+
+
+
 
 from io import BytesIO
 import re
@@ -10,13 +65,10 @@ import urllib.parse
 import quote
 from datetime import date
 import datetime as dt
-
-
-st.set_page_config(page_title="주가 조회 앱", layout="wide")
-# ============================================================  
-
 import feedparser
 from urllib.parse import quote
+
+st.set_page_config(page_title="주가 조회 앱", layout="wide")
 
 @st.cache_data(show_spinner=False, ttl=10 * 60)
 def fetch_google_news_rss(query: str, limit: int = 10):
