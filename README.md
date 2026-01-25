@@ -1,5 +1,5 @@
 # 📊 Streamlit 주가 조회 대시보드
-
+https://app-stock-dashboard.streamlit.app/
 KRX 상장사의 주가 데이터를 조회하고  
 **수익률 · 최근 흐름 · 리스크(MDD) · 주요 뉴스 헤드라인**을  
 한 화면에서 확인할 수 있는 Streamlit 기반 주가 분석 대시보드입니다.
